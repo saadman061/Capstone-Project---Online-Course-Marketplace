@@ -1,0 +1,18 @@
+{
+  "type": "mysql",
+  "host": "${DB_HOST:localhost}",
+  "port": 3306,
+  "username": "${DB_USER:root}",
+  "password": "${DB_PASSWORD:password}",
+  "database": "${DB_NAME:course_marketplace}",
+  "synchronize": false,
+  "logging": true,
+  "entities": ["dist/entities/**/*.js"],
+  "migrations": ["dist/migrations/**/*.js"],
+  "subscribers": ["dist/subscribers/**/*.js"],
+  "cli": {
+    "entitiesDir": "src/entities",
+    "migrationsDir": "src/migrations",
+    "subscribersDir": "src/subscribers"
+  }
+}
