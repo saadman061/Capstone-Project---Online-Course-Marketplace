@@ -1,189 +1,135 @@
 import { Router, Request, Response } from 'express';
-import { getRepository } from 'typeorm';
-import { Enrollment } from '../entities/Enrollment';
-import { Course } from '../entities/Course';
-import { Payment, PaymentStatus } from '../entities/Enrollment';
-import { authMiddleware, AuthRequest, roleMiddleware } from '../middleware/auth.middleware';
-import { body, validationResult, param } from 'express-validator';
+import { body, validationResult } from 'express-validator';
+import EnrollmentService from '../services/EnrollmentService';
+import PaymentService from '../services/PaymentService';
+import authMiddleware from '../middleware/auth.middleware';
 
 const router = Router();
 
-// Get user's enrollments
-router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
+// GET all enrollments for a student
+router.get('/student/:studentId', authMiddleware, async (req: Request, res: Response) => {
   try {
-    const enrollmentRepo = getRepository(Enrollment);
-    const enrollments = await enrollmentRepo.find({
-      where: { studentId: req.user!.userId },
-      relations: ['course', 'payment']
-    });
+    if (req.user?.userId !== req.params.studentId && req.user?.role !== 'admin') {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
 
+    const enrollments = await EnrollmentService.getStudentEnrollments(req.params.studentId);
     res.json(enrollments);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Get single enrollment
-router.get('/:id', [param('id').isUUID()], async (req: AuthRequest, res: Response) => {
+// GET all enrollments for a course (instructor only)
+router.get('/course/:courseId', authMiddleware, async (req: Request, res: Response) => {
   try {
-    const enrollmentRepo = getRepository(Enrollment);
-    const enrollment = await enrollmentRepo.findOne({
-      where: { enrollmentId: req.params.id },
-      relations: ['course', 'payment', 'certificate']
-    });
+    if (req.user?.role !== 'instructor' && req.user?.role !== 'admin') {
+      return res.status(403).json({ error: 'Only instructors can view course enrollments' });
+    }
 
+    const enrollments = await EnrollmentService.getCourseEnrollments(req.params.courseId);
+    res.json(enrollments);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ENROLL student in course (student only)
+router.post(
+  '/enroll',
+  authMiddleware,
+  [
+    body('courseId').notEmpty().withMessage('Course ID is required'),
+  ],
+  async (req: Request, res: Response) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+
+      if (req.user?.role !== 'student') {
+        return res.status(403).json({ error: 'Only students can enroll in courses' });
+      }
+
+      // Create payment first
+      const coursePrice = req.body.coursePrice || 0;
+      const payment = await PaymentService.initiatePayment(
+        req.user.userId,
+        coursePrice,
+        req.body.paymentMethod || 'card'
+      );
+
+      // Process payment (in real app, this would be Stripe/PayPal)
+      const processedPayment = await PaymentService.processPayment(payment.paymentId);
+
+      // Create enrollment
+      const enrollment = await EnrollmentService.enrollStudent(
+        req.user.userId,
+        req.body.courseId,
+        processedPayment.paymentId
+      );
+
+      res.status(201).json({
+        enrollment,
+        payment: processedPayment,
+      });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  }
+);
+
+// UPDATE enrollment progress (student only)
+router.put(
+  '/:enrollmentId/progress',
+  authMiddleware,
+  [
+    body('progressPercent').isInt({ min: 0, max: 100 }).withMessage('Progress must be between 0 and 100'),
+  ],
+  async (req: Request, res: Response) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+
+      const enrollment = await EnrollmentService.getEnrollmentById(req.params.enrollmentId);
+      
+      if (!enrollment) {
+        return res.status(404).json({ error: 'Enrollment not found' });
+      }
+
+      if (req.user?.userId !== enrollment.studentId && req.user?.role !== 'admin') {
+        return res.status(403).json({ error: 'Unauthorized' });
+      }
+
+      const updated = await EnrollmentService.updateProgress(
+        req.params.enrollmentId,
+        req.body.progressPercent
+      );
+
+      res.json(updated);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  }
+);
+
+// GET enrollment by ID
+router.get('/:enrollmentId', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const enrollment = await EnrollmentService.getEnrollmentById(req.params.enrollmentId);
+    
     if (!enrollment) {
       return res.status(404).json({ error: 'Enrollment not found' });
+    }
+
+    if (req.user?.userId !== enrollment.studentId && req.user?.role !== 'admin') {
+      return res.status(403).json({ error: 'Unauthorized' });
     }
 
     res.json(enrollment);
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Create enrollment (enrol in course)
-router.post('/', authMiddleware, roleMiddleware(['student']), [
-  body('courseId').isUUID(),
-  body('paymentMethodId').notEmpty()
-], async (req: AuthRequest, res: Response) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
-
-    const { courseId, paymentMethodId } = req.body;
-    const enrollmentRepo = getRepository(Enrollment);
-    const courseRepo = getRepository(Course);
-    const paymentRepo = getRepository(Payment);
-
-    // Check if already enrolled
-    const existing = await enrollmentRepo.findOne({
-      where: { studentId: req.user!.userId, courseId }
-    });
-
-    if (existing) {
-      return res.status(400).json({ error: 'Already enrolled in this course' });
-    }
-
-    // Get course
-    const course = await courseRepo.findOne({ where: { courseId } });
-    if (!course) {
-      return res.status(404).json({ error: 'Course not found' });
-    }
-
-    // Create payment
-    const payment = new Payment();
-    payment.paymentId = require('uuid').v4();
-    payment.studentId = req.user!.userId;
-    payment.amount = course.price;
-    payment.method = paymentMethodId;
-    payment.status = PaymentStatus.PENDING;
-    payment.transactionRef = `TXN-${Date.now()}`;
-
-    // In production, integrate Stripe here
-    // For now, mark as completed
-    payment.status = PaymentStatus.COMPLETED;
-    payment.paidAt = new Date();
-
-    await paymentRepo.save(payment);
-
-    // Create enrollment
-    const enrollment = new Enrollment();
-    enrollment.enrollmentId = require('uuid').v4();
-    enrollment.studentId = req.user!.userId;
-    enrollment.courseId = courseId;
-    enrollment.paymentId = payment.paymentId;
-    enrollment.progressPercent = 0;
-    enrollment.completed = false;
-
-    await enrollmentRepo.save(enrollment);
-
-    res.status(201).json({
-      message: 'Enrolled successfully',
-      enrollment,
-      payment
-    });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Update progress
-router.patch('/:id/progress', authMiddleware, [
-  param('id').isUUID(),
-  body('progressPercent').isInt({ min: 0, max: 100 })
-], async (req: AuthRequest, res: Response) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
-
-    const { progressPercent } = req.body;
-    const enrollmentRepo = getRepository(Enrollment);
-    const enrollment = await enrollmentRepo.findOne({ where: { enrollmentId: req.params.id } });
-
-    if (!enrollment) {
-      return res.status(404).json({ error: 'Enrollment not found' });
-    }
-
-    // Verify ownership
-    if (enrollment.studentId !== req.user!.userId) {
-      return res.status(403).json({ error: 'You can only update your own enrollments' });
-    }
-
-    enrollment.progressPercent = progressPercent;
-    if (progressPercent === 100) {
-      enrollment.completed = true;
-    }
-
-    await enrollmentRepo.save(enrollment);
-
-    res.json({ message: 'Progress updated', enrollment });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Complete course and generate certificate
-router.post('/:id/complete', authMiddleware, [
-  param('id').isUUID()
-], async (req: AuthRequest, res: Response) => {
-  try {
-    const enrollmentRepo = getRepository(Enrollment);
-    const enrollment = await enrollmentRepo.findOne({ 
-      where: { enrollmentId: req.params.id },
-      relations: ['course']
-    });
-
-    if (!enrollment) {
-      return res.status(404).json({ error: 'Enrollment not found' });
-    }
-
-    if (enrollment.studentId !== req.user!.userId) {
-      return res.status(403).json({ error: 'You can only complete your own enrollments' });
-    }
-
-    if (enrollment.progressPercent < 100) {
-      return res.status(400).json({ error: 'Course not fully completed' });
-    }
-
-    enrollment.completed = true;
-    await enrollmentRepo.save(enrollment);
-
-    // TODO: Generate certificate
-    // const certificate = new Certificate();
-    // certificate.enrollmentId = enrollment.enrollmentId;
-    // certificate.fileUrl = 'https://...'; // Generate PDF
-    // await certificateRepo.save(certificate);
-
-    res.json({ 
-      message: 'Course completed successfully',
-      enrollment,
-      certificateUrl: 'https://example.com/certificates/...'
-    });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }

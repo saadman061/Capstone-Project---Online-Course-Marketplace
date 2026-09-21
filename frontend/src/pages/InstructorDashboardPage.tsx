@@ -51,31 +51,6 @@ const InstructorDashboardPage: React.FC = () => {
     return <Navigate to="/" />;
   }
 
-  // useEffect(() => {
-  //   // Simulate fetching courses
-  //   setTimeout(() => {
-  //     setCourses([
-  //       {
-  //         courseId: '1',
-  //         title: 'React Fundamentals',
-  //         status: 'published',
-  //         enrollments: 42,
-  //         avgRating: 4.8,
-  //         createdAt: '2025-01-10'
-  //       },
-  //       {
-  //         courseId: '2',
-  //         title: 'Advanced TypeScript',
-  //         status: 'under_review',
-  //         enrollments: 0,
-  //         avgRating: 0,
-  //         createdAt: '2025-01-15'
-  //       }
-  //     ]);
-  //     setLoading(false);
-  //   }, 500);
-  // }, []);
-
   const statusColors: { [key: string]: string } = {
     published: 'bg-green-100 text-green-800',
     under_review: 'bg-yellow-100 text-yellow-800',
