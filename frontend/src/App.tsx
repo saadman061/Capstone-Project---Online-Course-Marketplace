@@ -9,10 +9,15 @@ import CourseCataloguePage from './pages/CourseCataloguePage';
 import CourseDetailPage from './pages/CourseDetailPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
+import ProfilePage from './pages/ProfilePage';
 import StudentDashboardPage from './pages/StudentDashboardPage';
 import InstructorDashboardPage from './pages/InstructorDashboardPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
 import CheckoutPage from './pages/CheckoutPage';
+import EditCoursePage from './pages/EditCoursePage';
+import CourseLearningPage from './pages/CourseLearningPage';
 
 const App: React.FC = () => {
   return (
@@ -28,9 +33,13 @@ const App: React.FC = () => {
               <Route path="/courses/:courseId" element={<CourseDetailPage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+              <Route path="/reset-password" element={<ResetPasswordPage />} />
+              <Route path="/profile" element={<ProfilePage />} />
 
               {/* Protected routes - Student */}
               <Route path="/student/dashboard" element={<StudentDashboardPage />} />
+              <Route path="/learn/:courseId/:enrollmentId" element={<CourseLearningPage />} />
 
               {/* Protected routes - Instructor */}
               <Route path="/instructor/dashboard" element={<InstructorDashboardPage />} />
@@ -40,6 +49,7 @@ const App: React.FC = () => {
 
               {/* Checkout */}
               <Route path="/checkout" element={<CheckoutPage />} />
+              <Route path="/edit-course/:courseId" element={<EditCoursePage />} />
 
               {/* Fallback */}
               <Route path="*" element={<Navigate to="/" />} />

@@ -80,11 +80,11 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, onViewDetails }) => {
 
           {/* Rating */}
           <div className="flex items-center gap-1 mb-3">
-            <span className="text-sm font-medium">{course.avgRating.toFixed(1)}</span>
+            <span className="text-sm font-medium">{typeof course.avgRating === 'string' ? parseFloat(course.avgRating).toFixed(1) : course.avgRating.toFixed(1)}</span>
             <div className="flex text-yellow-400">
               {[...Array(5)].map((_, i) => (
-                <span key={i} className={i < Math.round(course.avgRating) ? '⭐' : '☆'}>
-                  {i < Math.round(course.avgRating) ? '⭐' : '☆'}
+                <span key={i} className={i < Math.round(typeof course.avgRating === 'string' ? parseFloat(course.avgRating) : course.avgRating) ? '⭐' : '☆'}>
+                  {i < Math.round(typeof course.avgRating === 'string' ? parseFloat(course.avgRating) : course.avgRating) ? '⭐' : '☆'}
                 </span>
               ))}
             </div>
@@ -93,7 +93,7 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, onViewDetails }) => {
           {/* Price and Button */}
           <div className="flex justify-between items-center pt-3 border-t">
             <span className="text-xl font-bold text-secondary">
-              ${course.price.toFixed(2)}
+              ${typeof course.price === 'string' ? parseFloat(course.price).toFixed(2) : course.price.toFixed(2)}
             </span>
             <button
               onClick={handleAddToCart}

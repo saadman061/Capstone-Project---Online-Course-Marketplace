@@ -12,13 +12,28 @@ router.get('/', async (req: Request, res: Response) => {
     const { status, categoryId, instructorId } = req.query;
     const filters: any = {};
 
-    if (status) filters.status = status;
-    if (categoryId) filters.categoryId = categoryId;
-    if (instructorId) filters.instructorId = instructorId;
+    // If instructorId is provided: show all statuses (instructor viewing their own courses)
+    // If no instructorId: show only published (public browsing)
+    if (instructorId) {
+      // Instructor viewing their courses - show all statuses
+      if (status) {
+        filters.status = status as string;
+      }
+      // No default status filter for instructors
+      filters.instructorId = instructorId;
+    } else {
+      // Public browsing - only show published courses
+      filters.status = (status as string) || 'published';
+    }
 
+    if (categoryId) filters.categoryId = categoryId;
+
+    console.log('📚 Fetching courses with filters:', filters);
     const courses = await CourseService.getCourses(filters);
+    console.log('✅ Found', courses.length, 'courses');
     res.json(courses);
   } catch (error: any) {
+    console.error('❌ Error fetching courses:', error);
     res.status(500).json({ error: error.message });
   }
 });

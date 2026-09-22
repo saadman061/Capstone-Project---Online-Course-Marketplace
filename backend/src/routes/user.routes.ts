@@ -11,8 +11,12 @@ const router = Router();
 // GET user profile
 router.get('/profile', authMiddleware, async (req: Request, res: Response) => {
   try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
     const userRepository = getRepository(User);
-    const user = await userRepository.findOne(req.user?.userId);
+    const user = await userRepository.findOne({ where: { userId: req.user.userId } });
 
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
@@ -44,13 +48,17 @@ router.put(
   ],
   async (req: Request, res: Response) => {
     try {
+      if (!req.user) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
         return res.status(400).json({ errors: errors.array() });
       }
 
       const userRepository = getRepository(User);
-      const user = await userRepository.findOne(req.user?.userId);
+      const user = await userRepository.findOne({ where: { userId: req.user.userId } });
 
       if (!user) {
         return res.status(404).json({ error: 'User not found' });

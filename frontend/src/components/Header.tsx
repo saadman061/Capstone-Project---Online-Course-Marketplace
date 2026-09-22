@@ -1,18 +1,30 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, authActions } from '../redux/store';
 
 const Header: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useDispatch();
   const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
   const cartItems = useSelector((state: RootState) => state.cart.items);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Check if we're on the courses page
+  const isOnCoursesPage = location.pathname === '/courses';
 
   const handleLogout = () => {
     dispatch(authActions.logout());
     navigate('/');
+  };
+
+  const handleSearch = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && searchQuery.trim()) {
+      navigate(`/courses?search=${encodeURIComponent(searchQuery)}`);
+      setSearchQuery('');
+    }
   };
 
   const getDashboardLink = () => {
@@ -38,19 +50,19 @@ const Header: React.FC = () => {
             📚 CourseHub
           </Link>
 
-          {/* Search Bar */}
-          <div className="flex-1 mx-8">
-            <input
-              type="text"
-              placeholder="Search courses..."
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary"
-              onKeyPress={(e) => {
-                if (e.key === 'Enter') {
-                  navigate(`/courses?search=${(e.target as HTMLInputElement).value}`);
-                }
-              }}
-            />
-          </div>
+          {/* Search Bar - Hidden on courses page */}
+          {!isOnCoursesPage && (
+            <div className="flex-1 mx-8">
+              <input
+                type="text"
+                placeholder="Search courses..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyPress={handleSearch}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary"
+              />
+            </div>
+          )}
 
           {/* Navigation Links */}
           <div className="flex items-center gap-6">
@@ -101,12 +113,18 @@ const Header: React.FC = () => {
                         Dashboard
                       </Link>
                     )}
+                    <Link
+                      to="/profile"
+                      className="block px-4 py-2 text-gray-700 hover:bg-gray-100"
+                    >
+                      My Profile
+                    </Link>
                     <button
                       onClick={() => {
                         handleLogout();
                         setShowUserMenu(false);
                       }}
-                      className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100"
+                      className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 border-t"
                     >
                       Logout
                     </button>

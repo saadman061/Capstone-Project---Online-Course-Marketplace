@@ -1,89 +1,42 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, OneToOne, OneToMany, JoinColumn } from 'typeorm';
 import { Student } from './User';
 import { Course } from './Course';
+import { Payment, PaymentStatus } from './Payment';
 
-// PaymentStatus enum must come first (before Payment class)
-export enum PaymentStatus {
-  PENDING = 'pending',
-  COMPLETED = 'completed',
-  FAILED = 'failed',
-  REFUNDED = 'refunded'
-}
-
-// Payment class must come before Enrollment (since Enrollment references it)
-@Entity('payments')
-export class Payment {
-  @PrimaryGeneratedColumn('uuid')
-  paymentId: string;
-
-  @Column('uuid')
-  studentId: string;
-
-  @Column('decimal', { precision: 10, scale: 2 })
-  amount: number;
-
-  @Column('varchar', { length: 50 })
-  method: string; // 'credit_card', 'paypal', etc.
-
-  @Column('enum', { enum: PaymentStatus, default: PaymentStatus.PENDING })
-  status: PaymentStatus;
-
-  @Column('varchar', { length: 255 })
-  transactionRef: string;
-
-  @Column('datetime', { nullable: true })
-  paidAt: Date;
-
-  @ManyToOne(() => Student)
-  @JoinColumn({ name: 'studentId' })
-  student: Student;
-
-  processPayment(): boolean {
-    // Payment processing logic
-    return true;
-  }
-
-  refund(): boolean {
-    // Refund logic
-    this.status = PaymentStatus.REFUNDED;
-    return true;
-  }
-}
-
-// Now Enrollment can safely reference Payment
+// Now Enrollment can safely reference Payment from separate file
 @Entity('enrollments')
 export class Enrollment {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn('uuid', { name: 'enrollment_id' })
   enrollmentId: string;
 
-  @Column('uuid')
+  @Column('uuid', { name: 'student_id' })
   studentId: string;
 
-  @Column('uuid')
+  @Column('uuid', { name: 'course_id' })
   courseId: string;
 
-  @Column('uuid')
+  @Column('uuid', { name: 'payment_id' })
   paymentId: string;
 
-  @Column('int', { default: 0 })
+  @Column('int', { default: 0, name: 'progress_percent' })
   progressPercent: number;
 
-  @Column('boolean', { default: false })
+  @Column('boolean', { default: false, name: 'completed' })
   completed: boolean;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ name: 'enrolled_at' })
   enrolledAt: Date;
 
   @ManyToOne(() => Student, student => student.enrolledCourses, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'studentId' })
+  @JoinColumn({ name: 'student_id' })
   student: Student;
 
   @ManyToOne(() => Course, course => course.enrollments, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'courseId' })
+  @JoinColumn({ name: 'course_id' })
   course: Course;
 
   @ManyToOne(() => Payment)
-  @JoinColumn({ name: 'paymentId' })
+  @JoinColumn({ name: 'payment_id' })
   payment: Payment;
 
   updateProgress(percentage: number): void {
@@ -96,10 +49,10 @@ export class Enrollment {
 
 @Entity('categories')
 export class Category {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn('uuid', { name: 'category_id' })
   categoryId: string;
 
-  @Column('varchar', { length: 255, unique: true })
+  @Column('varchar', { length: 255, unique: true, name: 'name' })
   name: string;
 
   @OneToMany(() => Course, course => course.category)

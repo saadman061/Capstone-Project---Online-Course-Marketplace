@@ -22,14 +22,30 @@ api.interceptors.request.use((config) => {
 export const authAPI = {
   register: (data: { name: string; email: string; password: string; role: 'student' | 'instructor' }) =>
     api.post('/auth/register', data),
-  login: (email: string, password: string) =>
-    api.post('/auth/login', { email, password }),
+  login: (credentials: { email: string; password: string }) =>
+    api.post('/auth/login', credentials),
+  logout: () =>
+    api.post('/auth/logout', {}),
+  forgotPassword: (email: string) =>
+    api.post('/auth/forgot-password', { email }),
+  resetPassword: (token: string, newPassword: string) =>
+    api.post('/auth/reset-password', { token, newPassword }),
+  changePassword: (currentPassword: string, newPassword: string) =>
+    api.post('/auth/change-password', { currentPassword, newPassword }),
+};
+
+// ============ CATEGORIES API ============
+export const categoriesAPI = {
+  getAll: () =>
+    api.get('/categories'),
 };
 
 // ============ COURSE API ============
 export const courseAPI = {
-  getAll: (filters?: { status?: string; categoryId?: string; instructorId?: string }) =>
+  getAll: (filters?: { status?: string; categoryId?: string; instructorId?: string; search?: string }) =>
     api.get('/courses', { params: filters }),
+  search: (query: string, filters?: { categoryId?: string }) =>
+    api.get('/courses', { params: { search: query, ...filters } }),
   getById: (courseId: string) =>
     api.get(`/courses/${courseId}`),
   create: (data: { title: string; description: string; price: number; categoryId: string }) =>
@@ -64,6 +80,14 @@ export const enrollmentAPI = {
     api.put(`/enrollments/${enrollmentId}/progress`, { progressPercent }),
   getAll: () =>
     api.get('/enrollments/student/me'),
+  markComplete: (enrollmentId: string) =>
+    api.post(`/enrollments/${enrollmentId}/complete`, {}),
+  generateCertificate: (enrollmentId: string) =>
+    api.post(`/enrollments/${enrollmentId}/certificate`, {}),
+  getCertificate: (enrollmentId: string) =>
+    api.get(`/enrollments/${enrollmentId}/certificate`),
+  getStudentCertificates: (studentId: string) =>
+    api.get(`/enrollments/student/${studentId}/certificates`),
 };
 
 // ============ USER API ============
@@ -78,6 +102,20 @@ export const userAPI = {
     api.post('/users/wishlist', { courseId }),
   removeFromWishlist: (courseId: string) =>
     api.delete(`/users/wishlist/${courseId}`),
+};
+
+// ============ LESSONS API ============
+export const lessonsAPI = {
+  completeLesson: (enrollmentId: string, lessonId: string) =>
+    api.post(`/lessons/${enrollmentId}/lessons/${lessonId}/complete`, {}),
+  getLessonProgress: (enrollmentId: string) =>
+    api.get(`/lessons/${enrollmentId}/progress`),
+  checkLessonStatus: (enrollmentId: string, lessonId: string) =>
+    api.get(`/lessons/${enrollmentId}/lessons/${lessonId}/status`),
+  getStudentProgress: () =>
+    api.get('/lessons/student/me/all'),
+  resetProgress: (enrollmentId: string) =>
+    api.post(`/lessons/${enrollmentId}/reset`, {}),
 };
 
 // ============ ADMIN API ============

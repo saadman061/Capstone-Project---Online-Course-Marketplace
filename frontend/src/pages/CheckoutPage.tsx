@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { RootState, cartActions } from '../redux/store';
+import { enrollmentAPI } from '../api/client';
 
 const CheckoutPage: React.FC = () => {
   const dispatch = useDispatch();
@@ -16,6 +17,7 @@ const CheckoutPage: React.FC = () => {
     cvv: ''
   });
   const [loading, setLoading] = useState(false);
+  const [enrollmentError, setEnrollmentError] = useState<string | null>(null);
 
   // Redirect if not logged in
   if (!isAuthenticated) {
@@ -51,15 +53,35 @@ const CheckoutPage: React.FC = () => {
     }
 
     setLoading(true);
+    setEnrollmentError(null);
     try {
-      // Simulate payment processing
+      // Simulate payment processing (2 seconds)
       await new Promise((resolve) => setTimeout(resolve, 2000));
 
-      // In production, integrate with Stripe here
-      // For demo, just show confirmation
+      console.log('💳 Processing enrollments for', cartItems.length, 'courses');
+
+      // Enroll in each course
+      for (const course of cartItems) {
+        try {
+          const response = await enrollmentAPI.enroll({
+            courseId: course.courseId,
+            coursePrice: course.price,
+            paymentMethod: 'card'
+          });
+          console.log('✅ Enrolled in course:', course.title, response.data);
+        } catch (enrollError: any) {
+          console.error('❌ Enrollment failed for', course.title, enrollError);
+          setEnrollmentError(enrollError.response?.data?.error || `Failed to enroll in ${course.title}`);
+          setLoading(false);
+          return;
+        }
+      }
+
+      // If all enrollments successful, show confirmation
       setStep('confirmation');
-    } catch (error) {
-      alert('Payment failed. Please try again.');
+    } catch (error: any) {
+      console.error('Payment error:', error);
+      setEnrollmentError('Payment processing failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -67,7 +89,7 @@ const CheckoutPage: React.FC = () => {
 
   const handleConfirmation = () => {
     dispatch(cartActions.clearCart());
-    navigate('/student/dashboard');
+    navigate('/student-dashboard');
   };
 
   return (
@@ -125,6 +147,13 @@ const CheckoutPage: React.FC = () => {
             {step === 'payment' && (
               <div className="bg-white rounded-lg shadow p-8">
                 <h2 className="text-2xl font-bold text-primary mb-6">Payment Information</h2>
+
+                {enrollmentError && (
+                  <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+                    <p className="font-semibold">Error</p>
+                    <p>{enrollmentError}</p>
+                  </div>
+                )}
 
                 <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); handlePayment(); }}>
                   <div>

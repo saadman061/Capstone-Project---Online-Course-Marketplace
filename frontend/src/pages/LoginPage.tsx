@@ -87,9 +87,9 @@ const LoginPage: React.FC = () => {
                 <input type="checkbox" className="mr-2" />
                 <span className="text-gray-600">Remember me</span>
               </label>
-              <a href="#" className="text-secondary hover:text-primary">
+              <Link to="/forgot-password" className="text-secondary hover:text-primary">
                 Forgot password?
-              </a>
+              </Link>
             </div>
 
             {/* Submit Button */}

@@ -19,6 +19,8 @@ interface Enrollment {
 const StudentDashboardPage: React.FC = () => {
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const user = useSelector((state: RootState) => state.auth.user);
 
   // Call hooks BEFORE early return
@@ -44,6 +46,48 @@ const StudentDashboardPage: React.FC = () => {
     }
   };
 
+  const handleMarkComplete = async (enrollmentId: string) => {
+    setActionLoading(enrollmentId);
+    setError(null);
+    try {
+      const response = await enrollmentAPI.markComplete(enrollmentId);
+      console.log('✅ Course marked as complete:', response.data);
+      
+      // Update enrollments state
+      setEnrollments(enrollments.map(e => 
+        e.enrollmentId === enrollmentId ? { ...e, ...response.data.enrollment } : e
+      ));
+    } catch (err: any) {
+      console.error('Failed to mark course as complete:', err);
+      setError(err.response?.data?.error || 'Failed to mark course as complete');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleGenerateCertificate = async (enrollmentId: string) => {
+    setActionLoading(enrollmentId);
+    setError(null);
+    try {
+      const response = await enrollmentAPI.generateCertificate(enrollmentId);
+      console.log('📜 Certificate generated:', response.data.certificate);
+      
+      // Download the certificate as SVG
+      const certificate = response.data.certificate;
+      const link = document.createElement('a');
+      link.href = certificate.fileUrl;
+      link.download = `certificate-${enrollmentId}.svg`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err: any) {
+      console.error('Failed to generate certificate:', err);
+      setError(err.response?.data?.error || 'Failed to generate certificate');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 py-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -51,6 +95,13 @@ const StudentDashboardPage: React.FC = () => {
           <h1 className="text-4xl font-bold text-primary mb-2">My Learning</h1>
           <p className="text-gray-600">Continue learning and track your progress</p>
         </div>
+
+        {error && (
+          <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+            <p className="font-semibold">Error</p>
+            <p>{error}</p>
+          </div>
+        )}
 
         {loading ? (
           <div className="text-center py-12">
@@ -95,18 +146,40 @@ const StudentDashboardPage: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Status Badge */}
+                  {/* Status Badge & Actions */}
                   <div className="ml-6">
                     {enrollment.completed ? (
-                      <div className="text-center">
-                        <span className="inline-block px-4 py-2 bg-green-100 text-green-800 rounded-full font-bold">
-                          ✅ Completed
-                        </span>
+                      <div className="space-y-2">
+                        <div className="text-center mb-3">
+                          <span className="inline-block px-4 py-2 bg-green-100 text-green-800 rounded-full font-bold">
+                            ✅ Completed
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => handleGenerateCertificate(enrollment.enrollmentId)}
+                          disabled={actionLoading === enrollment.enrollmentId}
+                          className="w-full px-4 py-2 bg-accent text-white rounded-lg hover:bg-secondary transition disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
+                        >
+                          {actionLoading === enrollment.enrollmentId ? '⏳ Generating...' : '📜 Download Certificate'}
+                        </button>
+                      </div>
+                    ) : enrollment.progressPercent === 100 ? (
+                      <div className="space-y-2">
+                        <button
+                          onClick={() => handleMarkComplete(enrollment.enrollmentId)}
+                          disabled={actionLoading === enrollment.enrollmentId}
+                          className="w-full px-6 py-2 bg-accent text-white rounded-lg hover:bg-secondary transition disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
+                        >
+                          {actionLoading === enrollment.enrollmentId ? '⏳ Processing...' : '✓ Mark as Complete'}
+                        </button>
                       </div>
                     ) : (
-                      <button className="px-6 py-2 bg-secondary text-white rounded-lg hover:bg-primary transition">
+                      <a
+                        href={`/learn/${enrollment.course.courseId}/${enrollment.enrollmentId}`}
+                        className="block px-6 py-2 bg-secondary text-white rounded-lg hover:bg-primary transition text-center font-semibold"
+                      >
                         Continue Learning
-                      </button>
+                      </a>
                     )}
                   </div>
                 </div>

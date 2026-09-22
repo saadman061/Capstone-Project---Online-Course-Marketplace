@@ -127,10 +127,10 @@ const CourseDetailPage: React.FC = () => {
               )}
               <div className="flex items-center gap-4 mb-4">
                 <div className="flex items-center gap-2">
-                  <span className="text-xl font-bold">{course.avgRating.toFixed(1)}</span>
+                  <span className="text-xl font-bold">{typeof course.avgRating === 'string' ? parseFloat(course.avgRating).toFixed(1) : course.avgRating.toFixed(1)}</span>
                   <div className="flex">
                     {[...Array(5)].map((_, i) => (
-                      <span key={i}>{i < Math.round(course.avgRating) ? '⭐' : '☆'}</span>
+                      <span key={i}>{i < Math.round(typeof course.avgRating === 'string' ? parseFloat(course.avgRating) : course.avgRating) ? '⭐' : '☆'}</span>
                     ))}
                   </div>
                 </div>
@@ -140,7 +140,7 @@ const CourseDetailPage: React.FC = () => {
                   Instructor: <span className="font-bold">{course.instructor.name}</span>
                 </p>
               )}
-              <p className="text-3xl font-bold mb-6">${course.price.toFixed(2)}</p>
+              <p className="text-3xl font-bold mb-6">${typeof course.price === 'string' ? parseFloat(course.price).toFixed(2) : course.price.toFixed(2)}</p>
 
               {/* Action Buttons */}
               <div className="flex gap-4">
@@ -240,7 +240,7 @@ const CourseDetailPage: React.FC = () => {
             <div className="bg-white rounded-lg shadow p-6 sticky top-20">
               <div className="mb-6">
                 <p className="text-gray-600 mb-2">Course Price</p>
-                <p className="text-3xl font-bold text-secondary">${course.price.toFixed(2)}</p>
+                <p className="text-3xl font-bold text-secondary">${typeof course.price === 'string' ? parseFloat(course.price).toFixed(2) : course.price.toFixed(2)}</p>
               </div>
 
               <button

@@ -20,8 +20,9 @@ const HomePage: React.FC = () => {
   useEffect(() => {
     const fetchCourses = async () => {
       try {
-        const response = await courseAPI.getAll({ limit: 6 });
-        setFeaturedCourses(response.data);
+        // Only fetch PUBLISHED courses for homepage
+        const response = await courseAPI.getAll({ status: 'published' });
+        setFeaturedCourses(response.data.slice(0, 6)); // Limit to 6 on frontend
       } catch (error) {
         console.error('Failed to fetch courses:', error);
         // Set mock data for demo

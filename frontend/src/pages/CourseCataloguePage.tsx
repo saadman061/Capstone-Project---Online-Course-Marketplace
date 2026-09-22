@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { courseAPI } from '../api/client';
+import { useSearchParams } from 'react-router-dom';
+import { courseAPI, categoriesAPI } from '../api/client';
 import CourseCard from '../components/CourseCard';
 
 interface Course {
@@ -9,82 +10,84 @@ interface Course {
   price: number;
   avgRating: number;
   instructor?: { name: string };
-  category?: { name: string };
+  category?: { categoryId: string; name: string };
+}
+
+interface Category {
+  categoryId: string;
+  name: string;
 }
 
 const CourseCataloguePage: React.FC = () => {
+  const [searchParams] = useSearchParams();
   const [courses, setCourses] = useState<Course[]>([]);
+  const [allCourses, setAllCourses] = useState<Course[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [priceRange, setPriceRange] = useState([0, 1000]);
 
-  const categories = [
-    { id: 'cat-web-dev', name: 'Web Development' },
-    { id: 'cat-mobile', name: 'Mobile Development' },
-    { id: 'cat-data', name: 'Data Science' },
-    { id: 'cat-ai', name: 'Artificial Intelligence' },
-    { id: 'cat-cloud', name: 'Cloud Computing' }
-  ];
-
+  // Load categories and courses on mount
   useEffect(() => {
-    fetchCourses();
+    loadCategoriesAndCourses();
   }, []);
 
-  const fetchCourses = async () => {
+  // Apply filters whenever any filter changes
+  useEffect(() => {
+    applyFilters();
+  }, [searchQuery, selectedCategory, priceRange, allCourses]);
+
+  const loadCategoriesAndCourses = async () => {
     try {
       setLoading(true);
-      const response = await courseAPI.getAll();
-      setCourses(response.data);
+
+      // Load categories
+      const categoriesResponse = await categoriesAPI.getAll();
+      const categoriesData = Array.isArray(categoriesResponse.data)
+        ? categoriesResponse.data
+        : categoriesResponse.data?.data || [];
+      setCategories(categoriesData);
+
+      // Load all published courses
+      const coursesResponse = await courseAPI.getAll();
+      const coursesData = Array.isArray(coursesResponse.data)
+        ? coursesResponse.data
+        : coursesResponse.data?.data || [];
+      setAllCourses(coursesData);
     } catch (error) {
-      console.error('Failed to fetch courses:', error);
-      // Set mock data
-      setCourses([
-        {
-          courseId: '1',
-          title: 'React.js Fundamentals',
-          description: 'Learn React from the ground up',
-          price: 49.99,
-          avgRating: 4.8,
-          instructor: { name: 'John Doe' },
-          category: { name: 'Web Development' }
-        },
-        {
-          courseId: '2',
-          title: 'Advanced TypeScript',
-          description: 'Master TypeScript for production apps',
-          price: 59.99,
-          avgRating: 4.9,
-          instructor: { name: 'Jane Smith' },
-          category: { name: 'Web Development' }
-        }
-      ]);
+      console.error('Failed to load courses and categories:', error);
+      setAllCourses([]);
+      setCategories([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSearch = async () => {
-    try {
-      setLoading(true);
-      if (searchQuery) {
-        const response = await courseAPI.search(searchQuery);
-        setCourses(response.data);
-      } else {
-        await fetchCourses();
-      }
-    } catch (error) {
-      console.error('Search failed:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const applyFilters = () => {
+    let filtered = [...allCourses];
 
-  const filteredCourses = courses.filter((course) => {
-    const matchesCategory = !selectedCategory || course.category?.id === selectedCategory;
-    const matchesPrice = course.price >= priceRange[0] && course.price <= priceRange[1];
-    return matchesCategory && matchesPrice;
-  });
+    // Filter by search query (title, description, instructor name)
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (course) =>
+          course.title.toLowerCase().includes(query) ||
+          course.description.toLowerCase().includes(query) ||
+          course.instructor?.name.toLowerCase().includes(query)
+      );
+    }
+
+    // Filter by category
+    if (selectedCategory) {
+      filtered = filtered.filter((course) => course.category?.categoryId === selectedCategory);
+    }
+
+    // Filter by price range
+    filtered = filtered.filter((course) => course.price >= priceRange[0] && course.price <= priceRange[1]);
+
+    setCourses(filtered);
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 py-12">
@@ -92,25 +95,17 @@ const CourseCataloguePage: React.FC = () => {
         <h1 className="text-4xl font-bold text-primary mb-8">Course Catalogue</h1>
 
         {/* Filters */}
-        <div className="grid grid-cols-4 gap-6 mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
           {/* Search */}
-          <div className="col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Search</label>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                placeholder="Search courses..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary"
-              />
-              <button
-                onClick={handleSearch}
-                className="px-6 py-2 bg-secondary text-white rounded-lg hover:bg-primary transition"
-              >
-                Search
-              </button>
-            </div>
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Search Courses</label>
+            <input
+              type="text"
+              placeholder="Search by title, topic, or instructor..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary"
+            />
           </div>
 
           {/* Category Filter */}
@@ -123,7 +118,7 @@ const CourseCataloguePage: React.FC = () => {
             >
               <option value="">All Categories</option>
               {categories.map((cat) => (
-                <option key={cat.id} value={cat.id}>
+                <option key={cat.categoryId} value={cat.categoryId}>
                   {cat.name}
                 </option>
               ))}
@@ -137,11 +132,31 @@ const CourseCataloguePage: React.FC = () => {
               type="range"
               min="0"
               max="1000"
+              step="10"
               value={priceRange[1]}
               onChange={(e) => setPriceRange([priceRange[0], parseInt(e.target.value)])}
               className="w-full"
             />
           </div>
+        </div>
+
+        {/* Filter Info & Reset */}
+        <div className="flex justify-between items-center mb-6">
+          <p className="text-gray-600">
+            Found <span className="font-semibold text-primary">{courses.length}</span> course{courses.length !== 1 ? 's' : ''}
+          </p>
+          {(searchQuery || selectedCategory || priceRange[1] < 1000) && (
+            <button
+              onClick={() => {
+                setSearchQuery('');
+                setSelectedCategory('');
+                setPriceRange([0, 1000]);
+              }}
+              className="text-sm text-secondary hover:text-primary font-medium transition"
+            >
+              Clear All Filters
+            </button>
+          )}
         </div>
 
         {/* Results */}
@@ -151,16 +166,16 @@ const CourseCataloguePage: React.FC = () => {
           </div>
         ) : (
           <>
-            <p className="text-gray-600 mb-6">Found {filteredCourses.length} courses</p>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredCourses.map((course) => (
+              {courses.map((course) => (
                 <CourseCard key={course.courseId} course={course} />
               ))}
             </div>
 
-            {filteredCourses.length === 0 && (
+            {courses.length === 0 && (
               <div className="text-center py-12">
-                <p className="text-gray-600">No courses found. Try adjusting your filters.</p>
+                <p className="text-gray-600 text-lg">No courses found.</p>
+                <p className="text-gray-500 mt-2">Try adjusting your search, category, or price filters.</p>
               </div>
             )}
           </>

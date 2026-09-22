@@ -3,10 +3,10 @@ import { Course } from './Course';
 
 @Entity('categories')
 export class Category {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn('uuid', { name: 'category_id' })
   categoryId: string;
 
-  @Column('varchar', { length: 255, unique: true })
+  @Column('varchar', { length: 255, unique: true, name: 'name' })
   name: string;
 
   @OneToMany(() => Course, course => course.category)

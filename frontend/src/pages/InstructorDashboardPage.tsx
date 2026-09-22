@@ -1,50 +1,137 @@
 import React, { useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
+import { courseAPI, categoriesAPI } from '../api/client';
 import { RootState } from '../redux/store';
 
 interface Course {
   courseId: string;
   title: string;
+  description: string;
   status: string;
-  enrollments: number;
+  price: number;
   avgRating: number;
   createdAt: string;
 }
 
 const InstructorDashboardPage: React.FC = () => {
+  const navigate = useNavigate();
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    price: '',
+    categoryId: ''
+  });
   const [showForm, setShowForm] = useState(false);
+  const [categories, setCategories] = useState<any[]>([]);
   const user = useSelector((state: RootState) => state.auth.user);
 
   // Call hooks BEFORE early return
   useEffect(() => {
     if (user?.role === 'instructor') {
-      // Simulate fetching courses
-      setTimeout(() => {
-        setCourses([
-          {
-            courseId: '1',
-            title: 'React Fundamentals',
-            status: 'published',
-            enrollments: 42,
-            avgRating: 4.8,
-            createdAt: '2025-01-10'
-          },
-          {
-            courseId: '2',
-            title: 'Advanced TypeScript',
-            status: 'under_review',
-            enrollments: 0,
-            avgRating: 0,
-            createdAt: '2025-01-15'
-          }
-        ]);
-        setLoading(false);
-      }, 500);
+      fetchCourses();
+      fetchCategories();
     }
-  }, [user?.role]);
+  }, [user?.role, user?.userId]);
+
+  const fetchCourses = async () => {
+    try {
+      setLoading(true);
+      const response = await courseAPI.getAll({ instructorId: user?.userId });
+      console.log('✅ Courses fetched:', response.data);
+      setCourses(response.data);
+    } catch (err: any) {
+      console.error('❌ Error fetching courses:', err);
+      setError('Failed to load courses');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchCategories = async () => {
+    try {
+      console.log('📁 Fetching categories from API...');
+      const response = await categoriesAPI.getAll();
+      console.log('✅ Categories fetched:', response.data);
+      setCategories(response.data);
+    } catch (err: any) {
+      console.error('❌ Error fetching categories:', err);
+      setError('Failed to load categories. Please refresh the page.');
+    }
+  };
+
+  const handleCreateCourse = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+
+    if (!formData.title || !formData.description || !formData.price || !formData.categoryId) {
+      setError('All fields are required');
+      return;
+    }
+
+    try {
+      const response = await courseAPI.create({
+        title: formData.title,
+        description: formData.description,
+        price: parseFloat(formData.price),
+        categoryId: formData.categoryId
+      });
+
+      setCourses([...courses, response.data]);
+      setFormData({ title: '', description: '', price: '', categoryId: '' });
+      setShowForm(false);
+      setSuccess('Course created successfully!');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err: any) {
+      console.error('Error creating course:', err);
+      setError(err.response?.data?.error || 'Failed to create course');
+    }
+  };
+
+  const handlePublishCourse = async (courseId: string) => {
+    setError('');
+    setSuccess('');
+
+    if (!window.confirm('Submit this course for review?')) {
+      return;
+    }
+
+    try {
+      await courseAPI.publish(courseId);
+      setCourses(courses.map(c => 
+        c.courseId === courseId ? { ...c, status: 'under_review' } : c
+      ));
+      setSuccess('Course submitted for review!');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err: any) {
+      console.error('Error publishing course:', err);
+      setError(err.response?.data?.error || 'Failed to publish course');
+    }
+  };
+
+  const handleDeleteCourse = async (courseId: string) => {
+    if (!window.confirm('Are you sure you want to delete this course? This action cannot be undone.')) {
+      return;
+    }
+
+    setError('');
+    setSuccess('');
+
+    try {
+      await courseAPI.delete(courseId);
+      setCourses(courses.filter(c => c.courseId !== courseId));
+      setSuccess('Course deleted successfully!');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err: any) {
+      console.error('Error deleting course:', err);
+      setError(err.response?.data?.error || 'Failed to delete course');
+    }
+  };
 
   // Redirect if not instructor (after hooks)
   if (user?.role !== 'instructor') {
@@ -61,6 +148,18 @@ const InstructorDashboardPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50 py-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
+            {error}
+          </div>
+        )}
+
+        {success && (
+          <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-6">
+            {success}
+          </div>
+        )}
+
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-4xl font-bold text-primary">My Courses</h1>
@@ -78,40 +177,59 @@ const InstructorDashboardPage: React.FC = () => {
         {showForm && (
           <div className="bg-white rounded-lg shadow p-6 mb-8">
             <h2 className="text-2xl font-bold text-primary mb-4">Create New Course</h2>
-            <form className="space-y-4">
+            <form onSubmit={handleCreateCourse} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Course Title</label>
                 <input
                   type="text"
+                  value={formData.title}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   placeholder="Enter course title"
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary"
+                  required
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                <select className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary">
-                  <option>Web Development</option>
-                  <option>Mobile Development</option>
-                  <option>Data Science</option>
+                <select
+                  value={formData.categoryId}
+                  onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary"
+                  required
+                >
+                  <option value="">Select a category</option>
+                  {categories.map(cat => (
+                    <option key={cat.categoryId} value={cat.categoryId}>
+                      {cat.name}
+                    </option>
+                  ))}
                 </select>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Price</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Price ($)</label>
                 <input
                   type="number"
+                  step="0.01"
+                  min="0"
+                  value={formData.price}
+                  onChange={(e) => setFormData({ ...formData, price: e.target.value })}
                   placeholder="0.00"
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary"
+                  required
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
                 <textarea
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   placeholder="Describe your course"
                   rows={5}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary"
+                  required
                 />
               </div>
 
@@ -140,11 +258,14 @@ const InstructorDashboardPage: React.FC = () => {
             {courses.map((course) => (
               <div key={course.courseId} className="bg-white rounded-lg shadow p-6">
                 <div className="flex justify-between items-start">
-                  <div className="flex-1">
+                  <div className="flex-1 pr-4">
                     <h3 className="text-2xl font-bold text-primary mb-2">{course.title}</h3>
-                    <div className="flex items-center gap-4 text-gray-600">
-                      <span>👥 {course.enrollments} students</span>
-                      {course.avgRating > 0 && <span>⭐ {course.avgRating.toFixed(1)} rating</span>}
+                    <p className="text-gray-600 mb-2 text-sm">{course.description.substring(0, 150)}...</p>
+                    <div className="flex items-center gap-6 text-gray-600 text-sm">
+                      <span>💰 ${typeof course.price === 'string' ? parseFloat(course.price).toFixed(2) : course.price.toFixed(2)}</span>
+                      {course.avgRating > 0 && (
+                        <span>⭐ {typeof course.avgRating === 'string' ? parseFloat(course.avgRating).toFixed(1) : course.avgRating.toFixed(1)} rating</span>
+                      )}
                     </div>
                   </div>
 
@@ -152,11 +273,27 @@ const InstructorDashboardPage: React.FC = () => {
                     <span className={`inline-block px-4 py-2 rounded-full font-bold text-sm mb-4 ${statusColors[course.status]}`}>
                       {course.status.replace('_', ' ').toUpperCase()}
                     </span>
-                    <div className="space-x-2">
-                      <button className="px-4 py-2 text-secondary font-bold hover:text-primary">
-                        Edit
-                      </button>
-                      <button className="px-4 py-2 text-danger font-bold hover:opacity-70">
+                    <div className="space-y-2 flex flex-col items-end gap-2">
+                      {course.status === 'draft' && (
+                        <>
+                          <button
+                            onClick={() => navigate(`/edit-course/${course.courseId}`)}
+                            className="px-4 py-2 text-secondary font-bold hover:text-primary transition"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handlePublishCourse(course.courseId)}
+                            className="px-4 py-2 bg-secondary text-white font-bold rounded hover:bg-primary transition text-sm"
+                          >
+                            Publish
+                          </button>
+                        </>
+                      )}
+                      <button
+                        onClick={() => handleDeleteCourse(course.courseId)}
+                        className="px-4 py-2 text-danger font-bold hover:opacity-70 transition"
+                      >
                         Delete
                       </button>
                     </div>

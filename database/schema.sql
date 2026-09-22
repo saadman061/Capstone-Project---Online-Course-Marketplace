@@ -248,6 +248,27 @@ WHERE u.role = 'instructor'
 GROUP BY u.user_id, u.name;
 
 -- ============================================================
+-- LESSON_PROGRESS Table (Track student lesson completion)
+-- ============================================================
+CREATE TABLE lesson_progress (
+  lesson_progress_id CHAR(36) PRIMARY KEY,
+  enrollment_id CHAR(36) NOT NULL,
+  lesson_id CHAR(36) NOT NULL,
+  student_id CHAR(36) NOT NULL,
+  completed BOOLEAN DEFAULT FALSE,
+  completed_at TIMESTAMP NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_enrollment (enrollment_id),
+  INDEX idx_lesson (lesson_id),
+  INDEX idx_student (student_id),
+  INDEX idx_completed (completed),
+  UNIQUE KEY unique_lesson_progress (enrollment_id, lesson_id),
+  CONSTRAINT fk_lp_enrollment FOREIGN KEY (enrollment_id) REFERENCES enrollments(enrollment_id) ON DELETE CASCADE,
+  CONSTRAINT fk_lp_lesson FOREIGN KEY (lesson_id) REFERENCES lessons(lesson_id) ON DELETE CASCADE,
+  CONSTRAINT fk_lp_student FOREIGN KEY (student_id) REFERENCES users(user_id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
 -- Sample Data for Testing
 -- ============================================================
 INSERT INTO categories (category_id, name) VALUES
