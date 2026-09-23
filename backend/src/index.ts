@@ -10,6 +10,8 @@ import enrollmentRoutes from './routes/enrollment.routes';
 import lessonsRoutes from './routes/lessons.routes';
 import userRoutes from './routes/user.routes';
 import adminRoutes from './routes/admin.routes';
+import ticketRoutes from './routes/ticket.routes';
+import notificationRoutes from './routes/notification.routes';
 
 dotenv.config();
 
@@ -37,6 +39,8 @@ app.use('/api/v1/enrollments', enrollmentRoutes);
 app.use('/api/v1/lessons', lessonsRoutes);
 app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/admin', adminRoutes);
+app.use('/api/v1/tickets', ticketRoutes);
+app.use('/api/v1/notifications', notificationRoutes);
 
 // Health check
 app.get('/api/v1/health', (req: Request, res: Response) => {
