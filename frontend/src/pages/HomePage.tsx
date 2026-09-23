@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { courseAPI } from '../api/client';
+import { courseAPI, statsAPI } from '../api/client';
 import CourseCard from '../components/CourseCard';
 
 interface Course {
@@ -13,9 +13,35 @@ interface Course {
   category?: { name: string };
 }
 
+interface PlatformStats {
+  totalStudents: number;
+  totalInstructors: number;
+  totalCourses: number;
+}
+
+const formatStat = (value: number | undefined): string => {
+  if (value === undefined) return '—';
+  if (value >= 1000) return `${(value / 1000).toFixed(value % 1000 === 0 ? 0 : 1)}K+`;
+  return `${value}+`;
+};
+
 const HomePage: React.FC = () => {
   const [featuredCourses, setFeaturedCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<PlatformStats | null>(null);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const response = await statsAPI.getPublic();
+        setStats(response.data);
+      } catch (error) {
+        console.error('Failed to fetch platform stats:', error);
+      }
+    };
+
+    fetchStats();
+  }, []);
 
   useEffect(() => {
     const fetchCourses = async () => {
@@ -98,15 +124,15 @@ const HomePage: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-3 gap-8 text-center">
             <div>
-              <p className="text-4xl font-bold text-secondary">50K+</p>
+              <p className="text-4xl font-bold text-secondary">{formatStat(stats?.totalStudents)}</p>
               <p className="text-gray-700 mt-2">Active Students</p>
             </div>
             <div>
-              <p className="text-4xl font-bold text-secondary">1000+</p>
+              <p className="text-4xl font-bold text-secondary">{formatStat(stats?.totalInstructors)}</p>
               <p className="text-gray-700 mt-2">Expert Instructors</p>
             </div>
             <div>
-              <p className="text-4xl font-bold text-secondary">5000+</p>
+              <p className="text-4xl font-bold text-secondary">{formatStat(stats?.totalCourses)}</p>
               <p className="text-gray-700 mt-2">Quality Courses</p>
             </div>
           </div>
