@@ -12,6 +12,7 @@ import userRoutes from './routes/user.routes';
 import adminRoutes from './routes/admin.routes';
 import ticketRoutes from './routes/ticket.routes';
 import notificationRoutes from './routes/notification.routes';
+import statsRoutes from './routes/stats.routes';
 
 dotenv.config();
 
@@ -41,6 +42,7 @@ app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/tickets', ticketRoutes);
 app.use('/api/v1/notifications', notificationRoutes);
+app.use('/api/v1/stats', statsRoutes);
 
 // Health check
 app.get('/api/v1/health', (req: Request, res: Response) => {
