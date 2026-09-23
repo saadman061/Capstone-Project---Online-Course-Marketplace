@@ -34,20 +34,29 @@ interface Course {
   instructor?: { name: string };
   category?: { name: string };
   modules?: Module[];
-  reviews?: Review[];
 }
 
 const CourseDetailPage: React.FC = () => {
   const { courseId } = useParams<{ courseId: string }>();
   const [course, setCourse] = useState<Course | null>(null);
+  const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const dispatch = useDispatch();
   const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
   const userRole = useSelector((state: RootState) => state.auth.user?.role);
 
+  // Review form state
+  const [reviewRating, setReviewRating] = useState(0);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [reviewComment, setReviewComment] = useState('');
+  const [reviewError, setReviewError] = useState('');
+  const [reviewSuccess, setReviewSuccess] = useState('');
+  const [submittingReview, setSubmittingReview] = useState(false);
+
   useEffect(() => {
     fetchCourse();
+    fetchReviews();
   }, [courseId]);
 
   const fetchCourse = async () => {
@@ -61,6 +70,17 @@ const CourseDetailPage: React.FC = () => {
       setError(err.response?.data?.error || 'Failed to load course');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchReviews = async () => {
+    try {
+      if (courseId) {
+        const response = await courseAPI.getReviews(courseId);
+        setReviews(response.data);
+      }
+    } catch (err: any) {
+      console.error('Error fetching reviews:', err);
     }
   };
 
@@ -80,13 +100,45 @@ const CourseDetailPage: React.FC = () => {
   const handleEnrol = async () => {
     try {
       if (!course) return;
-      await enrollmentAPI.create({
+      await enrollmentAPI.enroll({
         courseId: course.courseId,
-        paymentMethodId: 'stripe'
+        coursePrice: course.price,
+        paymentMethod: 'card'
       });
       alert('Enrolled successfully!');
     } catch (err: any) {
       alert(err.response?.data?.error || 'Enrollment failed');
+    }
+  };
+
+  const handleSubmitReview = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setReviewError('');
+    setReviewSuccess('');
+
+    if (reviewRating < 1) {
+      setReviewError('Please select a star rating');
+      return;
+    }
+
+    if (!courseId) return;
+
+    try {
+      setSubmittingReview(true);
+      await courseAPI.submitReview(courseId, {
+        rating: reviewRating,
+        comment: reviewComment.trim() || undefined
+      });
+      setReviewRating(0);
+      setReviewComment('');
+      setReviewSuccess('Review submitted!');
+      setTimeout(() => setReviewSuccess(''), 3000);
+      await Promise.all([fetchReviews(), fetchCourse()]);
+    } catch (err: any) {
+      console.error('Error submitting review:', err);
+      setReviewError(err.response?.data?.error || 'Failed to submit review');
+    } finally {
+      setSubmittingReview(false);
     }
   };
 
@@ -210,11 +262,73 @@ const CourseDetailPage: React.FC = () => {
             )}
 
             {/* Reviews */}
-            {course.reviews && course.reviews.length > 0 && (
-              <section>
-                <h2 className="text-2xl font-bold text-primary mb-4">Student Reviews</h2>
+            <section>
+              <h2 className="text-2xl font-bold text-primary mb-4">Student Reviews</h2>
+
+              {isAuthenticated && userRole === 'student' && (
+                <div className="bg-white rounded-lg shadow p-6 mb-6">
+                  <h3 className="font-bold text-lg mb-3">Write a Review</h3>
+
+                  {reviewError && (
+                    <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 text-sm">
+                      {reviewError}
+                    </div>
+                  )}
+
+                  {reviewSuccess && (
+                    <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-4 text-sm">
+                      {reviewSuccess}
+                    </div>
+                  )}
+
+                  <form onSubmit={handleSubmitReview} className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Your Rating</label>
+                      <div className="flex text-2xl">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <button
+                            key={star}
+                            type="button"
+                            onClick={() => setReviewRating(star)}
+                            onMouseEnter={() => setHoverRating(star)}
+                            onMouseLeave={() => setHoverRating(0)}
+                            className="focus:outline-none"
+                            aria-label={`Rate ${star} star${star > 1 ? 's' : ''}`}
+                          >
+                            {star <= (hoverRating || reviewRating) ? '⭐' : '☆'}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Comment (optional)</label>
+                      <textarea
+                        value={reviewComment}
+                        onChange={(e) => setReviewComment(e.target.value)}
+                        rows={3}
+                        placeholder="Share your thoughts on this course"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary"
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={submittingReview}
+                      className="px-6 py-2 bg-secondary text-white font-bold rounded-lg hover:bg-primary transition disabled:opacity-50"
+                    >
+                      {submittingReview ? 'Submitting...' : 'Submit Review'}
+                    </button>
+                    <p className="text-xs text-gray-500">
+                      You must be enrolled in this course to leave a review.
+                    </p>
+                  </form>
+                </div>
+              )}
+
+              {reviews.length > 0 ? (
                 <div className="space-y-4">
-                  {course.reviews.map((review) => (
+                  {reviews.map((review) => (
                     <div key={review.reviewId} className="bg-white rounded-lg shadow p-4">
                       <div className="flex items-center justify-between mb-2">
                         <span className="font-bold">{review.student.name}</span>
@@ -231,8 +345,10 @@ const CourseDetailPage: React.FC = () => {
                     </div>
                   ))}
                 </div>
-              </section>
-            )}
+              ) : (
+                <p className="text-gray-600">No reviews yet. Be the first to review this course!</p>
+              )}
+            </section>
           </div>
 
           {/* Right Column (Sidebar) */}
