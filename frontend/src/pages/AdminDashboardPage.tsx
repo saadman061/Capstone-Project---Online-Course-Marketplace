@@ -19,12 +19,36 @@ interface Analytics {
   averageRating: number;
 }
 
+interface PlatformUser {
+  userId: string;
+  name: string;
+  email: string;
+  role: string;
+  status: string;
+  createdAt: string;
+}
+
+const roleColors: { [key: string]: string } = {
+  student: 'bg-blue-100 text-blue-800',
+  instructor: 'bg-purple-100 text-purple-800',
+  admin: 'bg-gray-800 text-white',
+  support_agent: 'bg-teal-100 text-teal-800'
+};
+
 const AdminDashboardPage: React.FC = () => {
   const [courses, setCourses] = useState<Course[]>([]);
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
+  const [users, setUsers] = useState<PlatformUser[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedTab, setSelectedTab] = useState<'analytics' | 'courses'>('analytics');
+  const [selectedTab, setSelectedTab] = useState<'analytics' | 'courses' | 'users'>('analytics');
   const user = useSelector((state: RootState) => state.auth.user);
+
+  // Add Support User form state
+  const [showAddAgentForm, setShowAddAgentForm] = useState(false);
+  const [agentFormData, setAgentFormData] = useState({ name: '', email: '', password: '' });
+  const [agentError, setAgentError] = useState('');
+  const [agentSuccess, setAgentSuccess] = useState('');
+  const [creatingAgent, setCreatingAgent] = useState(false);
 
   // Call hooks BEFORE early return
   useEffect(() => {
@@ -40,19 +64,65 @@ const AdminDashboardPage: React.FC = () => {
 
   const fetchAdminData = async () => {
     try {
-      const [pendingRes, publishedRes, analyticsRes] = await Promise.all([
+      const [pendingRes, publishedRes, analyticsRes, usersRes] = await Promise.all([
         adminAPI.getPendingCourses(),
         adminAPI.getPublishedCourses(),
-        adminAPI.getAnalytics()
+        adminAPI.getAnalytics(),
+        adminAPI.getAllUsers()
       ]);
 
       // Merge both lists so the Course Review tab can show pending AND published courses
       setCourses([...pendingRes.data, ...publishedRes.data]);
       setAnalytics(analyticsRes.data);
+      setUsers(usersRes.data);
     } catch (error) {
       console.error('Failed to fetch admin data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAddSupportAgent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAgentError('');
+    setAgentSuccess('');
+
+    if (!agentFormData.name.trim() || !agentFormData.email.trim() || !agentFormData.password) {
+      setAgentError('All fields are required');
+      return;
+    }
+
+    try {
+      setCreatingAgent(true);
+      await adminAPI.createSupportAgent(agentFormData);
+      setAgentFormData({ name: '', email: '', password: '' });
+      setShowAddAgentForm(false);
+      setAgentSuccess('Support user created!');
+      setTimeout(() => setAgentSuccess(''), 3000);
+      await fetchAdminData();
+    } catch (err: any) {
+      console.error('Error creating support user:', err);
+      setAgentError(err.response?.data?.error || 'Failed to create support user');
+    } finally {
+      setCreatingAgent(false);
+    }
+  };
+
+  const handleSuspendUser = async (userId: string) => {
+    try {
+      await adminAPI.suspendUser(userId);
+      await fetchAdminData();
+    } catch (error) {
+      alert('Failed to suspend user');
+    }
+  };
+
+  const handleActivateUser = async (userId: string) => {
+    try {
+      await adminAPI.activateUser(userId);
+      await fetchAdminData();
+    } catch (error) {
+      alert('Failed to activate user');
     }
   };
 
@@ -113,6 +183,16 @@ const AdminDashboardPage: React.FC = () => {
             }`}
           >
             Course Review
+          </button>
+          <button
+            onClick={() => setSelectedTab('users')}
+            className={`px-6 py-2 font-bold rounded-lg transition ${
+              selectedTab === 'users'
+                ? 'bg-secondary text-white'
+                : 'bg-white text-gray-700 hover:bg-gray-100'
+            }`}
+          >
+            Users
           </button>
         </div>
 
@@ -198,6 +278,134 @@ const AdminDashboardPage: React.FC = () => {
                     </div>
                   ))}
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Users Tab */}
+        {selectedTab === 'users' && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-bold text-primary">All Users</h2>
+              <button
+                onClick={() => {
+                  setShowAddAgentForm(!showAddAgentForm);
+                  setAgentError('');
+                }}
+                className="px-4 py-2 bg-secondary text-white font-bold rounded-lg hover:bg-primary transition"
+              >
+                {showAddAgentForm ? 'Cancel' : '+ Add Support User'}
+              </button>
+            </div>
+
+            {showAddAgentForm && (
+              <div className="bg-white rounded-lg shadow p-6">
+                <h3 className="text-lg font-bold text-primary mb-4">New Support User</h3>
+                <form onSubmit={handleAddSupportAgent} className="space-y-4">
+                  {agentError && (
+                    <p className="text-danger text-sm font-semibold">{agentError}</p>
+                  )}
+                  {agentSuccess && (
+                    <p className="text-accent text-sm font-semibold">{agentSuccess}</p>
+                  )}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <input
+                      type="text"
+                      placeholder="Name"
+                      value={agentFormData.name}
+                      onChange={(e) => setAgentFormData({ ...agentFormData, name: e.target.value })}
+                      className="border border-gray-300 rounded-lg px-3 py-2"
+                    />
+                    <input
+                      type="email"
+                      placeholder="Email"
+                      value={agentFormData.email}
+                      onChange={(e) => setAgentFormData({ ...agentFormData, email: e.target.value })}
+                      className="border border-gray-300 rounded-lg px-3 py-2"
+                    />
+                    <input
+                      type="password"
+                      placeholder="Password"
+                      value={agentFormData.password}
+                      onChange={(e) => setAgentFormData({ ...agentFormData, password: e.target.value })}
+                      className="border border-gray-300 rounded-lg px-3 py-2"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={creatingAgent}
+                    className="px-6 py-2 bg-accent text-white font-bold rounded-lg hover:bg-green-700 transition disabled:opacity-50"
+                  >
+                    {creatingAgent ? 'Creating...' : 'Create Support User'}
+                  </button>
+                </form>
+              </div>
+            )}
+
+            {!showAddAgentForm && agentSuccess && (
+              <p className="text-accent text-sm font-semibold">{agentSuccess}</p>
+            )}
+
+            <div className="bg-white rounded-lg shadow overflow-hidden">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">Name</th>
+                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">Email</th>
+                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">Role</th>
+                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {users.map((u) => (
+                    <tr key={u.userId}>
+                      <td className="px-6 py-4 font-semibold text-gray-800">{u.name}</td>
+                      <td className="px-6 py-4 text-gray-600">{u.email}</td>
+                      <td className="px-6 py-4">
+                        <span
+                          className={`px-3 py-1 rounded-full text-xs font-bold ${
+                            roleColors[u.role] || 'bg-gray-100 text-gray-800'
+                          }`}
+                        >
+                          {u.role}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span
+                          className={`px-3 py-1 rounded-full text-xs font-bold ${
+                            u.status === 'active'
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-red-100 text-red-800'
+                          }`}
+                        >
+                          {u.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        {u.status === 'active' ? (
+                          <button
+                            onClick={() => handleSuspendUser(u.userId)}
+                            className="px-3 py-1 bg-danger text-white text-sm font-bold rounded hover:bg-red-700 transition"
+                          >
+                            Suspend
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleActivateUser(u.userId)}
+                            className="px-3 py-1 bg-accent text-white text-sm font-bold rounded hover:bg-green-700 transition"
+                          >
+                            Activate
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {users.length === 0 && (
+                <p className="text-gray-600 text-center py-8">No users found</p>
+              )}
             </div>
           </div>
         )}
