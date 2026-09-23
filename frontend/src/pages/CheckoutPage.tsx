@@ -89,7 +89,7 @@ const CheckoutPage: React.FC = () => {
 
   const handleConfirmation = () => {
     dispatch(cartActions.clearCart());
-    navigate('/student-dashboard');
+    navigate('/student/dashboard');
   };
 
   return (
