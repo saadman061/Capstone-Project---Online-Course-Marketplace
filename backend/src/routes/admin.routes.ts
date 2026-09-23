@@ -71,6 +71,38 @@ router.post(
   }
 );
 
+// CREATE a support agent user (admin only)
+router.post(
+  '/users/support-agent',
+  authMiddleware,
+  adminOnly,
+  [
+    body('name').notEmpty().withMessage('Name is required'),
+    body('email').isEmail().withMessage('A valid email is required'),
+    body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
+  ],
+  async (req: Request, res: Response) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+
+      const agent = await AdminService.createSupportAgent(req.body);
+      res.status(201).json({
+        userId: agent.userId,
+        name: agent.name,
+        email: agent.email,
+        role: agent.role,
+        status: agent.status
+      });
+    } catch (error: any) {
+      console.error('❌ Error creating support agent:', error.message);
+      res.status(400).json({ error: error.message });
+    }
+  }
+);
+
 // GET all users (admin only)
 router.get('/users', authMiddleware, adminOnly, async (req: Request, res: Response) => {
   try {
