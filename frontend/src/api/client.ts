@@ -132,6 +132,8 @@ export const adminAPI = {
     api.get('/admin/courses/pending'),
   getAllUsers: () =>
     api.get('/admin/users'),
+  createSupportAgent: (data: { name: string; email: string; password: string }) =>
+    api.post('/admin/users/support-agent', data),
   suspendUser: (userId: string) =>
     api.post(`/admin/users/${userId}/suspend`, {}),
   activateUser: (userId: string) =>
@@ -152,6 +154,12 @@ export const ticketAPI = {
     api.get(`/tickets/${ticketId}`),
   update: (ticketId: string, data: { status?: string; priority?: string; claim?: boolean }) =>
     api.put(`/tickets/${ticketId}`, data),
+};
+
+// ============ STATS API ============
+export const statsAPI = {
+  getPublic: () =>
+    api.get('/stats/public'),
 };
 
 // ============ NOTIFICATION API ============
