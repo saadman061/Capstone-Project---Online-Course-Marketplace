@@ -54,6 +54,10 @@ export const courseAPI = {
     api.put(`/courses/${courseId}`, data),
   publish: (courseId: string) =>
     api.post(`/courses/${courseId}/publish`, {}),
+  resubmit: (courseId: string) =>
+    api.post(`/courses/${courseId}/resubmit`, {}),
+  discontinue: (courseId: string) =>
+    api.post(`/courses/${courseId}/discontinue`, {}),
   delete: (courseId: string) =>
     api.delete(`/courses/${courseId}`),
   getReviews: (courseId: string) =>
@@ -124,6 +128,14 @@ export const adminAPI = {
     api.get('/admin/courses/pending'),
   getPublishedCourses: () =>
     api.get('/admin/courses/published'),
+  getSuspendedCourses: () =>
+    api.get('/admin/courses/suspended'),
+  suspendCourse: (courseId: string) =>
+    api.post(`/admin/courses/${courseId}/suspend`, {}),
+  reinstateCourse: (courseId: string) =>
+    api.post(`/admin/courses/${courseId}/reinstate`, {}),
+  archiveCourse: (courseId: string) =>
+    api.post(`/admin/courses/${courseId}/archive`, {}),
   approveCourse: (courseId: string) =>
     api.post(`/admin/courses/${courseId}/approve`, {}),
   rejectCourse: (courseId: string, reason: string) =>
