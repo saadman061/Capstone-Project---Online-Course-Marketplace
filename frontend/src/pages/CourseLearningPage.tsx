@@ -121,6 +121,34 @@ const CourseLearningPage: React.FC = () => {
     }
   };
 
+  // Convert a plain YouTube link (watch/shorts/short-link) into the embeddable
+  // /embed/ form. A raw "watch" URL can't be loaded in an iframe - YouTube's
+  // watch page sends X-Frame-Options: sameorigin, so the browser refuses it.
+  const getEmbeddableVideoUrl = (url: string): string => {
+    if (!url) return '';
+
+    if (url.includes('youtube.com/embed/') || url.includes('player.vimeo.com')) {
+      return url;
+    }
+
+    const shortLinkMatch = url.match(/youtu\.be\/([a-zA-Z0-9_-]+)/);
+    if (shortLinkMatch) {
+      return `https://www.youtube.com/embed/${shortLinkMatch[1]}`;
+    }
+
+    const shortsMatch = url.match(/youtube\.com\/shorts\/([a-zA-Z0-9_-]+)/);
+    if (shortsMatch) {
+      return `https://www.youtube.com/embed/${shortsMatch[1]}`;
+    }
+
+    const watchMatch = url.match(/[?&]v=([a-zA-Z0-9_-]+)/);
+    if (watchMatch && url.includes('youtube.com')) {
+      return `https://www.youtube.com/embed/${watchMatch[1]}`;
+    }
+
+    return url;
+  };
+
   const getCurrentModule = () => course?.modules?.find(m => m.moduleId === selectedModule);
   const getCurrentLesson = () => getCurrentModule()?.lessons?.find(l => l.lessonId === selectedLesson);
 
@@ -149,7 +177,7 @@ const CourseLearningPage: React.FC = () => {
         <div className="text-center">
           <p className="text-2xl font-bold text-gray-700 mb-4">Course not found</p>
           <button
-            onClick={() => navigate('/student-dashboard')}
+            onClick={() => navigate('/student/dashboard')}
             className="px-6 py-3 bg-secondary text-white font-bold rounded-lg hover:bg-primary transition"
           >
             Back to Dashboard
@@ -170,7 +198,7 @@ const CourseLearningPage: React.FC = () => {
               <p className="text-gray-600">Instructor: {course.instructor.name}</p>
             </div>
             <button
-              onClick={() => navigate('/student-dashboard')}
+              onClick={() => navigate('/student/dashboard')}
               className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition"
             >
               ← Back
@@ -267,21 +295,29 @@ const CourseLearningPage: React.FC = () => {
             {currentLesson ? (
               <div className="bg-white rounded-lg shadow overflow-hidden">
                 {/* Video Player */}
-                <div className="bg-black aspect-video flex items-center justify-center">
-                  {videoLoading && (
-                    <div className="text-white">Loading video...</div>
+                <div className="bg-black aspect-video flex items-center justify-center relative">
+                  {currentLesson.videoUrl ? (
+                    <>
+                      {videoLoading && (
+                        <div className="text-white absolute inset-0 flex items-center justify-center">
+                          Loading video...
+                        </div>
+                      )}
+                      <iframe
+                        width="100%"
+                        height="100%"
+                        src={getEmbeddableVideoUrl(currentLesson.videoUrl)}
+                        title={currentLesson.title}
+                        frameBorder="0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                        onLoad={() => setVideoLoading(false)}
+                        onLoadStart={() => setVideoLoading(true)}
+                      />
+                    </>
+                  ) : (
+                    <p className="text-white">No video available for this lesson yet.</p>
                   )}
-                  <iframe
-                    width="100%"
-                    height="100%"
-                    src={currentLesson.videoUrl}
-                    title={currentLesson.title}
-                    frameBorder="0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                    onLoad={() => setVideoLoading(false)}
-                    onLoadStart={() => setVideoLoading(true)}
-                  />
                 </div>
 
                 {/* Lesson Details */}
