@@ -114,6 +114,44 @@ const InstructorDashboardPage: React.FC = () => {
     }
   };
 
+  const handleResubmitCourse = async (courseId: string) => {
+    setError('');
+    setSuccess('');
+
+    try {
+      await courseAPI.resubmit(courseId);
+      setCourses(courses.map(c =>
+        c.courseId === courseId ? { ...c, status: 'draft' } : c
+      ));
+      setSuccess('Course moved back to draft — edit it and submit for review again.');
+      setTimeout(() => setSuccess(''), 4000);
+    } catch (err: any) {
+      console.error('Error resubmitting course:', err);
+      setError(err.response?.data?.error || 'Failed to resubmit course');
+    }
+  };
+
+  const handleDiscontinueCourse = async (courseId: string) => {
+    setError('');
+    setSuccess('');
+
+    if (!window.confirm('Discontinue this course? It will be archived and removed from the catalogue.')) {
+      return;
+    }
+
+    try {
+      await courseAPI.discontinue(courseId);
+      setCourses(courses.map(c =>
+        c.courseId === courseId ? { ...c, status: 'archived' } : c
+      ));
+      setSuccess('Course discontinued and archived.');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err: any) {
+      console.error('Error discontinuing course:', err);
+      setError(err.response?.data?.error || 'Failed to discontinue course');
+    }
+  };
+
   const handleDeleteCourse = async (courseId: string) => {
     if (!window.confirm('Are you sure you want to delete this course? This action cannot be undone.')) {
       return;
@@ -142,7 +180,9 @@ const InstructorDashboardPage: React.FC = () => {
     published: 'bg-green-100 text-green-800',
     under_review: 'bg-yellow-100 text-yellow-800',
     draft: 'bg-gray-100 text-gray-800',
-    rejected: 'bg-red-100 text-red-800'
+    rejected: 'bg-red-100 text-red-800',
+    suspended: 'bg-orange-100 text-orange-800',
+    archived: 'bg-gray-300 text-gray-800'
   };
 
   return (
@@ -289,6 +329,22 @@ const InstructorDashboardPage: React.FC = () => {
                             Publish
                           </button>
                         </>
+                      )}
+                      {course.status === 'rejected' && (
+                        <button
+                          onClick={() => handleResubmitCourse(course.courseId)}
+                          className="px-4 py-2 bg-secondary text-white font-bold rounded hover:bg-primary transition text-sm"
+                        >
+                          Edit &amp; Resubmit
+                        </button>
+                      )}
+                      {course.status === 'published' && (
+                        <button
+                          onClick={() => handleDiscontinueCourse(course.courseId)}
+                          className="px-4 py-2 text-gray-700 font-bold hover:text-gray-900 transition text-sm"
+                        >
+                          Discontinue
+                        </button>
                       )}
                       <button
                         onClick={() => handleDeleteCourse(course.courseId)}
