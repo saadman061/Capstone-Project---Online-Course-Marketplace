@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, authActions } from '../redux/store';
+import NotificationBell from './NotificationBell';
 
 const Header: React.FC = () => {
   const navigate = useNavigate();
@@ -36,6 +37,8 @@ const Header: React.FC = () => {
         return '/instructor/dashboard';
       case 'admin':
         return '/admin/dashboard';
+      case 'support_agent':
+        return '/support/dashboard';
       default:
         return null;
     }
@@ -70,6 +73,12 @@ const Header: React.FC = () => {
               Courses
             </Link>
 
+            {isAuthenticated && (
+              <Link to="/support" className="text-gray-700 hover:text-secondary font-medium">
+                Support
+              </Link>
+            )}
+
             {/* Cart */}
             <Link to="/checkout" className="relative text-gray-700 hover:text-secondary">
               🛒 Cart
@@ -79,6 +88,9 @@ const Header: React.FC = () => {
                 </span>
               )}
             </Link>
+
+            {/* Notifications */}
+            <NotificationBell />
 
             {/* Auth */}
             {!isAuthenticated ? (
