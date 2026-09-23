@@ -33,6 +33,46 @@ router.get('/courses/published', authMiddleware, adminOnly, async (req: Request,
   }
 });
 
+// GET suspended courses (admin only)
+router.get('/courses/suspended', authMiddleware, adminOnly, async (req: Request, res: Response) => {
+  try {
+    const courses = await AdminService.getSuspendedCourses();
+    res.json(courses);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// SUSPEND course (admin only)
+router.post('/courses/:courseId/suspend', authMiddleware, adminOnly, async (req: Request, res: Response) => {
+  try {
+    const course = await AdminService.suspendCourse(req.params.courseId);
+    res.json(course);
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// REINSTATE course (admin only)
+router.post('/courses/:courseId/reinstate', authMiddleware, adminOnly, async (req: Request, res: Response) => {
+  try {
+    const course = await AdminService.reinstateCourse(req.params.courseId);
+    res.json(course);
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// ARCHIVE course (admin only)
+router.post('/courses/:courseId/archive', authMiddleware, adminOnly, async (req: Request, res: Response) => {
+  try {
+    const course = await AdminService.archiveCourse(req.params.courseId);
+    res.json(course);
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
 // APPROVE course (admin only)
 router.post(
   '/courses/:courseId/approve',
