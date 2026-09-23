@@ -54,6 +54,66 @@ export class AdminService {
     });
   }
 
+  async getSuspendedCourses() {
+    const courseRepository = getRepository(Course);
+
+    return await courseRepository.find({
+      where: { status: CourseStatus.SUSPENDED },
+      relations: ['instructor', 'category'],
+    });
+  }
+
+  async suspendCourse(courseId: string) {
+    const courseRepository = getRepository(Course);
+
+    const course = await courseRepository.findOne({ where: { courseId } });
+    if (!course) {
+      throw new Error('Course not found');
+    }
+
+    if (course.status !== CourseStatus.PUBLISHED) {
+      throw new Error('Only published courses can be suspended');
+    }
+
+    course.status = CourseStatus.SUSPENDED;
+    await courseRepository.save(course);
+    return course;
+  }
+
+  async reinstateCourse(courseId: string) {
+    const courseRepository = getRepository(Course);
+
+    const course = await courseRepository.findOne({ where: { courseId } });
+    if (!course) {
+      throw new Error('Course not found');
+    }
+
+    if (course.status !== CourseStatus.SUSPENDED) {
+      throw new Error('Only suspended courses can be reinstated');
+    }
+
+    course.status = CourseStatus.PUBLISHED;
+    await courseRepository.save(course);
+    return course;
+  }
+
+  async archiveCourse(courseId: string) {
+    const courseRepository = getRepository(Course);
+
+    const course = await courseRepository.findOne({ where: { courseId } });
+    if (!course) {
+      throw new Error('Course not found');
+    }
+
+    if (course.status !== CourseStatus.SUSPENDED) {
+      throw new Error('Only suspended courses can be archived');
+    }
+
+    course.status = CourseStatus.ARCHIVED;
+    await courseRepository.save(course);
+    return course;
+  }
+
   async approveCourse(courseId: string) {
     const courseRepository = getRepository(Course);
 
