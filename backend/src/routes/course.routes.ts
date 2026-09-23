@@ -118,6 +118,34 @@ router.post('/:courseId/publish', authMiddleware, async (req: Request, res: Resp
   }
 });
 
+// RESUBMIT course (instructor only, rejected -> draft)
+router.post('/:courseId/resubmit', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    if (req.user?.role !== 'instructor') {
+      return res.status(403).json({ error: 'Only instructors can resubmit courses' });
+    }
+
+    const course = await CourseService.resubmitCourse(req.params.courseId, req.user.userId);
+    res.json(course);
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// DISCONTINUE course (instructor only, published -> archived)
+router.post('/:courseId/discontinue', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    if (req.user?.role !== 'instructor') {
+      return res.status(403).json({ error: 'Only instructors can discontinue courses' });
+    }
+
+    const course = await CourseService.discontinueCourse(req.params.courseId, req.user.userId);
+    res.json(course);
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
 // APPROVE course (admin only)
 router.post('/:courseId/approve', authMiddleware, async (req: Request, res: Response) => {
   try {
