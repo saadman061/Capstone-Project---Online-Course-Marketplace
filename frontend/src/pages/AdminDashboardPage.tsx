@@ -64,15 +64,16 @@ const AdminDashboardPage: React.FC = () => {
 
   const fetchAdminData = async () => {
     try {
-      const [pendingRes, publishedRes, analyticsRes, usersRes] = await Promise.all([
+      const [pendingRes, publishedRes, suspendedRes, analyticsRes, usersRes] = await Promise.all([
         adminAPI.getPendingCourses(),
         adminAPI.getPublishedCourses(),
+        adminAPI.getSuspendedCourses(),
         adminAPI.getAnalytics(),
         adminAPI.getAllUsers()
       ]);
 
-      // Merge both lists so the Course Review tab can show pending AND published courses
-      setCourses([...pendingRes.data, ...publishedRes.data]);
+      // Merge all lists so the Course Review tab can show pending, published AND suspended courses
+      setCourses([...pendingRes.data, ...publishedRes.data, ...suspendedRes.data]);
       setAnalytics(analyticsRes.data);
       setUsers(usersRes.data);
     } catch (error) {
@@ -146,6 +147,40 @@ const AdminDashboardPage: React.FC = () => {
       } catch (error) {
         alert('Failed to reject course');
       }
+    }
+  };
+
+  const handleSuspendCourse = async (courseId: string) => {
+    if (!window.confirm('Suspend this course? It will be removed from public listings until reinstated.')) {
+      return;
+    }
+    try {
+      await adminAPI.suspendCourse(courseId);
+      await fetchAdminData();
+    } catch (error) {
+      alert('Failed to suspend course');
+    }
+  };
+
+  const handleReinstateCourse = async (courseId: string) => {
+    try {
+      await adminAPI.reinstateCourse(courseId);
+      await fetchAdminData();
+    } catch (error) {
+      alert('Failed to reinstate course');
+    }
+  };
+
+  const handleArchiveCourse = async (courseId: string) => {
+    if (!window.confirm('Archive this course permanently? This cannot be undone.')) {
+      return;
+    }
+    try {
+      await adminAPI.archiveCourse(courseId);
+      alert('Course archived and removed from the catalogue.');
+      await fetchAdminData();
+    } catch (error) {
+      alert('Failed to archive course');
     }
   };
 
@@ -270,13 +305,56 @@ const AdminDashboardPage: React.FC = () => {
               <div className="grid grid-cols-1 gap-4">
                 {courses
                   .filter((c) => c.status === 'published')
-                  .slice(0, 3)
                   .map((course) => (
-                    <div key={course.courseId} className="bg-white rounded-lg shadow p-4">
-                      <h3 className="font-bold text-primary">{course.title}</h3>
-                      <p className="text-sm text-gray-600">by {course.instructor.name}</p>
+                    <div key={course.courseId} className="bg-white rounded-lg shadow p-4 flex justify-between items-center">
+                      <div>
+                        <h3 className="font-bold text-primary">{course.title}</h3>
+                        <p className="text-sm text-gray-600">by {course.instructor.name}</p>
+                      </div>
+                      <button
+                        onClick={() => handleSuspendCourse(course.courseId)}
+                        className="px-3 py-1 bg-warning text-white text-sm font-bold rounded hover:opacity-80 transition"
+                      >
+                        Suspend
+                      </button>
                     </div>
                   ))}
+                {courses.filter((c) => c.status === 'published').length === 0 && (
+                  <p className="text-gray-600 text-sm">No published courses</p>
+                )}
+              </div>
+            </div>
+
+            <div className="mt-8">
+              <h2 className="text-2xl font-bold text-primary mb-4">Suspended Courses</h2>
+              <div className="grid grid-cols-1 gap-4">
+                {courses
+                  .filter((c) => c.status === 'suspended')
+                  .map((course) => (
+                    <div key={course.courseId} className="bg-white rounded-lg shadow p-4 flex justify-between items-center">
+                      <div>
+                        <h3 className="font-bold text-primary">{course.title}</h3>
+                        <p className="text-sm text-gray-600">by {course.instructor.name}</p>
+                      </div>
+                      <div className="space-x-2">
+                        <button
+                          onClick={() => handleReinstateCourse(course.courseId)}
+                          className="px-3 py-1 bg-accent text-white text-sm font-bold rounded hover:bg-green-700 transition"
+                        >
+                          Reinstate
+                        </button>
+                        <button
+                          onClick={() => handleArchiveCourse(course.courseId)}
+                          className="px-3 py-1 bg-gray-700 text-white text-sm font-bold rounded hover:bg-gray-900 transition"
+                        >
+                          Archive
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                {courses.filter((c) => c.status === 'suspended').length === 0 && (
+                  <p className="text-gray-600 text-sm">No suspended courses</p>
+                )}
               </div>
             </div>
           </div>
