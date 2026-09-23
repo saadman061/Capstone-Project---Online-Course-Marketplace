@@ -153,6 +153,48 @@ export class CourseService {
     return course;
   }
 
+  async resubmitCourse(courseId: string, instructorId: string) {
+    const courseRepository = getRepository(Course);
+    const course = await courseRepository.findOne({ where: { courseId } });
+
+    if (!course) {
+      throw new Error('Course not found');
+    }
+
+    if (course.instructorId !== instructorId) {
+      throw new Error('Unauthorized');
+    }
+
+    if (course.status !== CourseStatus.REJECTED) {
+      throw new Error('Only rejected courses can be resubmitted');
+    }
+
+    course.status = CourseStatus.DRAFT;
+    await courseRepository.save(course);
+    return course;
+  }
+
+  async discontinueCourse(courseId: string, instructorId: string) {
+    const courseRepository = getRepository(Course);
+    const course = await courseRepository.findOne({ where: { courseId } });
+
+    if (!course) {
+      throw new Error('Course not found');
+    }
+
+    if (course.instructorId !== instructorId) {
+      throw new Error('Unauthorized');
+    }
+
+    if (course.status !== CourseStatus.PUBLISHED) {
+      throw new Error('Only published courses can be discontinued');
+    }
+
+    course.status = CourseStatus.ARCHIVED;
+    await courseRepository.save(course);
+    return course;
+  }
+
   async deleteCourse(courseId: string, instructorId: string) {
     const courseRepository = getRepository(Course);
     const course = await courseRepository.findOne({ where: { courseId } });
