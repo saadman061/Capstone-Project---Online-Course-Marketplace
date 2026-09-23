@@ -40,19 +40,15 @@ const AdminDashboardPage: React.FC = () => {
 
   const fetchAdminData = async () => {
     try {
-      const [coursesRes, analyticsRes] = await Promise.all([
-        adminAPI.getCourses(),
-        adminAPI.getCourses() // Using getCourses as placeholder for analytics
+      const [pendingRes, publishedRes, analyticsRes] = await Promise.all([
+        adminAPI.getPendingCourses(),
+        adminAPI.getPublishedCourses(),
+        adminAPI.getAnalytics()
       ]);
 
-      setCourses(coursesRes.data);
-      setAnalytics({
-        totalUsers: 256,
-        totalCourses: coursesRes.data.length,
-        publishedCourses: coursesRes.data.filter((c: any) => c.status === 'published').length,
-        totalEnrollments: 1243,
-        averageRating: 4.6
-      });
+      // Merge both lists so the Course Review tab can show pending AND published courses
+      setCourses([...pendingRes.data, ...publishedRes.data]);
+      setAnalytics(analyticsRes.data);
     } catch (error) {
       console.error('Failed to fetch admin data:', error);
     } finally {
