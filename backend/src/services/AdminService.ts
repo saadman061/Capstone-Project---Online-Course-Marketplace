@@ -1,10 +1,41 @@
 import { getRepository } from 'typeorm';
+import * as bcrypt from 'bcryptjs';
 import { Course, CourseStatus } from '../entities/Course';
-import { User } from '../entities/User';
+import { User, SupportAgent } from '../entities/User';
 import { Enrollment } from '../entities/Enrollment';
 import { Review } from '../entities/Supporting';
 
 export class AdminService {
+  async createSupportAgent(data: { name: string; email: string; password: string }) {
+    const userRepository = getRepository(User);
+    const supportAgentRepository = getRepository(SupportAgent);
+
+    if (!data.name || !data.email || !data.password) {
+      throw new Error('Name, email and password are required');
+    }
+
+    if (data.password.length < 6) {
+      throw new Error('Password must be at least 6 characters');
+    }
+
+    const existingUser = await userRepository.findOne({ where: { email: data.email } });
+    if (existingUser) {
+      throw new Error('A user with this email already exists');
+    }
+
+    const passwordHash = await bcrypt.hash(data.password, 10);
+
+    const agent = new SupportAgent();
+    agent.name = data.name;
+    agent.email = data.email;
+    agent.passwordHash = passwordHash;
+    agent.role = 'support_agent';
+    agent.status = 'active';
+
+    await supportAgentRepository.save(agent);
+    return agent;
+  }
+
   async getPendingCourses() {
     const courseRepository = getRepository(Course);
 
