@@ -18,6 +18,8 @@ import AdminDashboardPage from './pages/AdminDashboardPage';
 import CheckoutPage from './pages/CheckoutPage';
 import EditCoursePage from './pages/EditCoursePage';
 import CourseLearningPage from './pages/CourseLearningPage';
+import SupportTicketsPage from './pages/SupportTicketsPage';
+import SupportAgentDashboardPage from './pages/SupportAgentDashboardPage';
 
 const App: React.FC = () => {
   return (
@@ -46,6 +48,10 @@ const App: React.FC = () => {
 
               {/* Protected routes - Admin */}
               <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+
+              {/* Support tickets */}
+              <Route path="/support" element={<SupportTicketsPage />} />
+              <Route path="/support/dashboard" element={<SupportAgentDashboardPage />} />
 
               {/* Checkout */}
               <Route path="/checkout" element={<CheckoutPage />} />
