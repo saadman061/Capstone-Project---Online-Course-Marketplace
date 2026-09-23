@@ -140,4 +140,28 @@ export const adminAPI = {
     api.get('/admin/analytics'),
 };
 
+// ============ TICKET API ============
+export const ticketAPI = {
+  create: (data: { subject: string; description: string; priority?: string }) =>
+    api.post('/tickets', data),
+  getMine: () =>
+    api.get('/tickets/my'),
+  getInbox: () =>
+    api.get('/tickets'),
+  getById: (ticketId: string) =>
+    api.get(`/tickets/${ticketId}`),
+  update: (ticketId: string, data: { status?: string; priority?: string; claim?: boolean }) =>
+    api.put(`/tickets/${ticketId}`, data),
+};
+
+// ============ NOTIFICATION API ============
+export const notificationAPI = {
+  getMine: () =>
+    api.get('/notifications/me'),
+  markRead: (notificationId: string) =>
+    api.put(`/notifications/${notificationId}/read`, {}),
+  markAllRead: () =>
+    api.post('/notifications/read-all', {}),
+};
+
 export default api;
