@@ -22,7 +22,7 @@ const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
       return res.status(401).json({ error: 'No authorization token provided' });
     }
 
-    const jwtSecret = process.env.JWT_SECRET || 'your-secret-key';
+    const jwtSecret = process.env.JWT_SECRET || 'secret';
     const decoded: any = jwt.verify(token, jwtSecret);
 
     req.user = {
@@ -33,6 +33,7 @@ const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
 
     next();
   } catch (error: any) {
+    console.error('🔐 Token verification failed:', error.message);
     return res.status(401).json({ error: 'Invalid or expired token' });
   }
 };
